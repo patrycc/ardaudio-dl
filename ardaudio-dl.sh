@@ -13,7 +13,7 @@ trim_ms=-1  # -1 means no trimming
 audiobook_cover_downloaded=false
 meta_number=false
 zip_contents=false
-zip_delete_folder=false
+download_location="."
 
 # Check if ffmpeg is installed
 if command -v ffmpeg &> /dev/null; then
@@ -72,16 +72,9 @@ while [[ $# -gt 0 ]]; do
             fi
             shift
             ;;
-         --zip)
+        --zip)
             zip_contents=true
-            if [[ "$2" == "d" ]]; then
-                zip_delete_folder=true
-                shift
-            fi
             echo "Zip mode activated. Contents will be zipped after download."
-            if [ "$zip_delete_folder" = true ]; then
-                echo "Original folder will be deleted after zipping."
-            fi
             shift
             ;;
         --trim)
@@ -98,6 +91,15 @@ while [[ $# -gt 0 ]]; do
                     echo "Trim mode activated with default value. Trimming 5000 milliseconds from the start of each audio file."
                     shift
                 fi
+            fi
+            ;;
+        --download-location)
+            if [[ -n $2 && $2 != -* ]]; then
+                download_location=$2
+                shift 2
+            else
+                echo "Warning: No value provided for --download-location. Using current directory."
+                shift
             fi
             ;;
         *)
@@ -121,6 +123,19 @@ initial_url=${url#view-source:}
 
 echo "Naming pattern set to: $naming_pattern"
 
+# Validate download location
+if [ ! -d "$download_location" ]; then
+    echo "Error: Specified download location does not exist or is not a directory."
+    exit 1
+fi
+
+if [ ! -w "$download_location" ]; then
+    echo "Error: No write permission in the specified download location."
+    exit 1
+fi
+
+echo "Download location set to: $download_location"
+
 # Function to create safe names for folders and files
 create_safe_name() {
     echo "$1" | tr -d '[:cntrl:]' | tr -s ' ' | tr '/' '_'
@@ -139,8 +154,8 @@ if [ -n "$show_name" ]; then
     folder_name=$(create_safe_name "$clean_show_name")
     echo "Show name found: $clean_show_name"
     echo "Folder name: $folder_name"
-    mkdir -p "$folder_name"
-    echo "Folder created: $folder_name"
+    mkdir -p "$download_location/$folder_name"
+    echo "Folder created: $download_location/$folder_name"
 else
     echo "Error: Could not find show name in the webpage."
     exit 1
@@ -204,11 +219,11 @@ download_audiobook_cover() {
         
         local cover_filename="cover.$file_extension"
         
-        if [ ! -f "$folder_name/$cover_filename" ]; then
+        if [ ! -f "$download_location/$folder_name/$cover_filename" ]; then
             echo "Downloading audiobook cover image..."
             echo "URL: $cover_image_url"
             echo "Detected file type: $content_type"
-            wget -4 --no-check-certificate --progress=bar:force:noscroll -O "$folder_name/$cover_filename" "$cover_image_url"
+            wget -4 --no-check-certificate --progress=bar:force:noscroll -O "$download_location/$folder_name/$cover_filename" "$cover_image_url"
             if [ $? -eq 0 ]; then
                 echo "Audiobook cover image downloaded: $cover_filename"
             else
@@ -321,13 +336,13 @@ download_episode() {
             
             image_filename="${filename%.*} cover.$ext"
             echo "Downloading image: $image_filename (Content-Type: $content_type)"
-            wget -4 --no-check-certificate --progress=bar:force:noscroll -O "$folder_name/$image_filename" "$image_url"
+            wget -4 --no-check-certificate --progress=bar:force:noscroll -O "$download_location/$folder_name/$image_filename" "$image_url"
             wget_exit_code=$?
             
             if [ $wget_exit_code -eq 0 ]; then
                 echo "Download completed. Checking file..."
-                file_size=$(stat -c%s "$folder_name/$image_filename")
-                echo "Image downloaded successfully. Size: $(du -h "$folder_name/$image_filename" | cut -f1)"
+                file_size=$(stat -c%s "$download_location/$folder_name/$image_filename")
+                echo "Image downloaded successfully. Size: $(du -h "$download_location/$folder_name/$image_filename" | cut -f1)"
                 
                 if [ $file_size -eq 0 ]; then
                     echo "Warning: Downloaded image file is empty."
@@ -349,30 +364,30 @@ download_episode() {
     fi
 
     echo "Downloading: $filename"
-    wget -4 --no-check-certificate --progress=bar:force:noscroll -O "$folder_name/$filename" "$mp3_url"
+    wget -4 --no-check-certificate --progress=bar:force:noscroll -O "$download_location/$folder_name/$filename" "$mp3_url"
     echo "Downloaded: $filename"
 
     # Autofill metadata
-    autofill_metadata "$folder_name/$filename" "$episode_title" "$clean_show_name" "$episode_counter"
+    autofill_metadata "$download_location/$folder_name/$filename" "$episode_title" "$clean_show_name" "$episode_counter"
 
     # Trim audio if necessary
     if [ "$ffmpeg_installed" = true ] && [ $trim_ms -ge 0 ]; then
         echo "Trimming $trim_ms milliseconds from the start of the audio..."
         trim_time=$(printf "%02d:%02d:%02d.%03d" $((trim_ms/3600000)) $((trim_ms/60000%60)) $((trim_ms/1000%60)) $((trim_ms%1000)))
-        ffmpeg -i "$folder_name/$filename" -ss "$trim_time" -acodec copy "$folder_name/trimmed_$filename" -loglevel error
-        mv "$folder_name/trimmed_$filename" "$folder_name/$filename"
+        ffmpeg -i "$download_location/$folder_name/$filename" -ss "$trim_time" -acodec copy "$download_location/$folder_name/trimmed_$filename" -loglevel error
+        mv "$download_location/$folder_name/trimmed_$filename" "$download_location/$folder_name/$filename"
         echo "Audio trimmed successfully."
     fi
 
     # Embed cover image using ffmpeg
-    if [ "$ffmpeg_installed" = true ] && [ "$audio_only" = false ] && [ -f "$folder_name/$image_filename" ] && [ -s "$folder_name/$image_filename" ]; then
+    if [ "$ffmpeg_installed" = true ] && [ "$audio_only" = false ] && [ -f "$download_location/$folder_name/$image_filename" ] && [ -s "$download_location/$folder_name/$image_filename" ]; then
         echo "Embedding cover image into MP3..."
-        ffmpeg -i "$folder_name/$filename" -i "$folder_name/$image_filename" -map 0:0 -map 1:0 -c copy -id3v2_version 3 "$folder_name/tmp.mp3" -loglevel error
+        ffmpeg -i "$download_location/$folder_name/$filename" -i "$download_location/$folder_name/$image_filename" -map 0:0 -map 1:0 -c copy -id3v2_version 3 "$download_location/$folder_name/tmp.mp3" -loglevel error
         if [ $? -eq 0 ]; then
-            mv "$folder_name/tmp.mp3" "$folder_name/$filename"
+            mv "$download_location/$folder_name/tmp.mp3" "$download_location/$folder_name/$filename"
             echo "Cover image embedded successfully."
             if [ "$keep_images" = false ]; then
-                rm "$folder_name/$image_filename"
+                rm "$download_location/$folder_name/$image_filename"
                 echo "Cover image file deleted."
             else
                 echo "Cover image file kept as requested."
@@ -383,7 +398,7 @@ download_episode() {
     elif [ "$ffmpeg_installed" = false ] && [ "$audio_only" = false ]; then
         echo "ffmpeg not installed: Skipping cover image embedding."
         if [ "$keep_images" = false ]; then
-            rm "$folder_name/$image_filename"
+            rm "$download_location/$folder_name/$image_filename"
             echo "Cover image file deleted."
         else
             echo "Cover image file kept."
@@ -419,31 +434,20 @@ download_episode() {
 zip_folder_contents() {
     if [ "$zip_contents" = true ]; then
         echo "Zipping folder contents..."
-        # Change to the folder
-        cd "$folder_name"
+        # Change to the folder containing the files
+        cd "$download_location/$folder_name"
         
-        # Create zip file
-        zip_file="${folder_name}.zip"
+        # Create zip file in the parent directory
+        zip_file="../${folder_name}.zip"
         if zip -r "$zip_file" *; then
             echo "Folder contents zipped successfully."
-            
-            # Move zip file to parent directory
-            mv "$zip_file" ..
-            echo "Zip file moved to parent directory: ../${zip_file}"
-            
-            # Change back to parent directory
-            cd ..
-            
-            if [ "$zip_delete_folder" = true ]; then
-                echo "Deleting original folder..."
-                rm -rf "$folder_name"
-                echo "Original folder deleted."
-            fi
+            echo "Zip file created: $download_location/$zip_file"
         else
             echo "Error: Failed to zip folder contents."
-            # Change back to parent directory even if zip fails
-            cd ..
         fi
+        
+        # Change back to the original directory
+        cd "$download_location"
     fi
 }
 
