@@ -1,6 +1,6 @@
 # ardaudio-dl
 
-A bash script for downloading audiobooks and series from the ARD Audiothek.
+A bash script for downloading audiobooks from the ARD Audiothek.
 
 ## Features
 
@@ -25,7 +25,7 @@ Audio processing features include the ability to trim intros, such as removing t
 
 https://www.ffmpeg.org/download.html
 
-You have to have ffmpeg installed, in order to use the trim, zip and metatag features. With no ffmpeg installed, those features will be ignored. Also, episode thumbnail images will still be downloaded, but not set as thumbnails for each episode.
+You have to have ffmpeg installed, in order to use the trim and metatag features. With no ffmpeg installed, those features will be ignored. Also, episode thumbnail images will still be downloaded, but won't be set as thumbnails for each episode.
 
 ## How to Use
 
