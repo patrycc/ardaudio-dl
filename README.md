@@ -1,6 +1,12 @@
 # ardaudio-dl
 
-ardaudio-dl is a bash script that allows you to download audiobooks and podcasts from the ARD Audiothek website. It provides various features such as metadata embedding, cover image downloading, and content zipping.
+A bash script for downloading audiobooks and series from the ARD Audiothek.
+
+## Features
+
+The script can download both series or single episodes from the ARD Audiothek. It offers customizable episode naming, allowing users to include episode numbers, book titles, and episode titles in their preferred order. Metadata management is supported, with options to autofill metatags for better organization. Cover art will be downloaded and embedded into the audio files by default.
+
+Audio processing features include the ability to trim intros, such as removing the ARD jingle, and an option for audio-only downloads without images. After downloading, the script can create zip archives of the episodes. Users can specify custom download locations. It primarily uses built-in bash commands, making it lightweight and easy to run on *nix and macOS systems.
 
 ## Installation and Requirements
 
@@ -15,10 +21,11 @@ ardaudio-dl is a bash script that allows you to download audiobooks and podcasts
 
 ### Requirements
 
-- Bash shell
-- wget
-- ffmpeg (optional, but required for metadata embedding and audio trimming)
-- zip (optional, required for creating zip archives)
+#### ffmpeg
+
+https://www.ffmpeg.org/download.html
+
+You have to have ffmpeg installed, in order to use the trim, zip and metatag features. With no ffmpeg installed, those features will be ignored. Also, episode thumbnail images will still be downloaded, but not set as thumbnails for each episode.
 
 ## How to Use
 
@@ -38,15 +45,15 @@ Note: Only use URLs that contain a "nächste Episode" (next episode) link if you
 
 ## Parameters
 
-- `--naming-pattern <pattern>`: Set the naming pattern for files. Use 'n' for number, 'b' for book title, 'e' for episode title. Default is "e".
+- `--naming-pattern <pattern>`: Set the naming pattern for files. Use 'n' for number, 'b' for book title, 'e' for episode title. If no pattern value is provided, it will default is "e" (episode title). The pattern order is up to you.
 - `--single-episode`: Download only the specified episode, ignore "next episode" links.
 - `--keep-images`: Keep cover images after embedding them into the audio files.
 - `--audio-only`: Download audio without attempting to fetch or embed images.
-- `--meta-autofill`: Automatically fill in metadata for the audio files (requires ffmpeg).
+- `--meta-autofill`: Automatically fill in metadata for the audio files (requires ffmpeg). Currently checks for the episode title and album name. If those values are already set, they won't be overwritten.
 - `--meta-number`: Use incrementing numbers as track titles in metadata (requires ffmpeg).
 - `--zip`: Create a zip file of the downloaded content after completion.
-- `--trim <milliseconds>`: Trim the specified number of milliseconds from the start of each audio file (requires ffmpeg). If used without a millisecond parameter, the default of 5000 milliseconds will be assumed.
-- `--download-location <path>`: Specify the directory where files should be downloaded. Default is the location of the script.
+- `--trim <milliseconds>`: Trim the specified number of milliseconds from the start of each audio file (requires ffmpeg). If no millisecond value is provided, 5000 milliseconds will be used as the default. (The ARD jingle is 5000 milliseconds long.) 
+- `--download-location <path>`: Specify the directory where files should be downloaded. Default is the location of the script. If no path value is provided, then the current folder will be used as the location. (As is the default anyway.)
 
 ## Examples
 
@@ -64,6 +71,12 @@ Note: Only use URLs that contain a "nächste Episode" (next episode) link if you
    ```
    ./ardaudio-dl.sh --download-location ~/Audiobooks --trim 5000 https://www.ardaudiothek.de/episode/your-series-url-here
    ```
+   
+## Troubleshooting
+
+### Red ffmpeg message 'Incorrect BOM value Error reading comment frame, skipped'
+
+ffmpeg sometimes has problems with the meta tags of some mp3s. It won't cause issues with the download or ffmpeg related features. I might fix it eventually.
 
 ## Acknowledgements
 
