@@ -15,6 +15,29 @@ meta_number=false
 zip_contents=false
 download_location="."
 
+show_help() {
+    cat << EOF
+Usage: ./ardaudio-dl.sh [OPTIONS] URL
+
+Options:
+  --naming-pattern <pattern>  Set the naming pattern for files (n: number, b: book title, e: episode title)
+  --single-episode            Download only the specified episode
+  --keep-images               Keep cover images after embedding them
+  --audio-only                Download audio without fetching or embedding images
+  --meta-autofill             Automatically fill in metadata for audio files
+  --meta-number               Use incrementing numbers as track titles in metadata
+  --zip                       Create a zip file of the downloaded content
+  --trim <milliseconds>       Trim the specified number of milliseconds from the start of each audio file
+  --download-location <path>  Specify the directory where files should be downloaded
+  --help                      Display this help message and exit
+
+Example:
+  ./ardaudio-dl.sh --naming-pattern "nbe" --zip https://www.ardaudiothek.de/episode/your-series-url-here
+
+For more information, visit: https://github.com/patrycc/ardaudio-dl
+EOF
+}
+
 # Check if ffmpeg is installed
 if command -v ffmpeg &> /dev/null; then
     ffmpeg_installed=true
@@ -26,6 +49,10 @@ fi
 # Check for parameters
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help)
+            show_help
+            exit 0
+            ;;
         --naming-pattern)
             if [[ -n $2 && $2 != -* ]]; then
                 naming_pattern=$2
@@ -114,8 +141,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# URL check goes here, right after the parameter parsing loop
 if [ -z "$url" ]; then
     echo "Error: Please provide a URL as the last parameter."
+    echo ""
+    show_help
     exit 1
 fi
 
