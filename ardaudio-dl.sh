@@ -174,13 +174,12 @@ create_safe_name() {
 # Create folder based on show name
 webpage_content=$(wget -4 --no-check-certificate --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" -qO- "$initial_url" 2>/dev/null)
 
-show_name=$(grep -oP '"show":"[^"]*"' <<< "$webpage_content" | sed 's/"show":"//;s/"$//')
-# Unescape the show name
-show_name=$(sed 's/\\\"/"/g' <<< "$show_name")
+# Extract and clean up the show name
+show_name=$(echo "$webpage_content" | grep -oP '"show":\s*"\K(?:\\.|[^"])*(?=")' | sed 's/\\"/"/g')
 
 if [ -n "$show_name" ]; then
     # Remove everything after and including the "|" character
-    clean_show_name=$(sed 's/ |.*$//' <<< "$show_name")
+    clean_show_name=$(echo "$show_name" | sed 's/ |.*$//')
     folder_name=$(create_safe_name "$clean_show_name")
     echo "Show name found: $clean_show_name"
     echo "Folder name: $folder_name"
