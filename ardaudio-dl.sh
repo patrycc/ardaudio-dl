@@ -84,7 +84,7 @@ while [[ $# -gt 0 ]]; do
         --meta-autofill)
             if [ "$ffmpeg_installed" = true ]; then
                 meta_autofill=true
-                echo "Metadata autofill activated. Empty tags will be filled with available information."
+                echo "Metadata autofill activated. Empty title and album tags will be filled with available information."
             else
                 echo "Warning: ffmpeg is not installed. Metadata autofill is not available."
             fi
@@ -93,9 +93,9 @@ while [[ $# -gt 0 ]]; do
         --meta-number)
             if [ "$ffmpeg_installed" = true ]; then
                 meta_number=true
-                echo "Track number metadata activated. Incrementing numbers will be set as track titles."
+                echo "Track number metadata activated. Track numbers will be set if not already present."
             else
-                echo "Warning: ffmpeg is not installed. Track number metadata is not available."
+                echo "Warning: ffmpeg is not installed. Setting track numbers is not available."
             fi
             shift
             ;;
@@ -285,20 +285,23 @@ autofill_metadata() {
         # Check existing metadata
         local current_title=$(ffprobe -v quiet -print_format json -show_format "$full_path" | grep -oP '"title"\s*:\s*"\K[^"]+')
         local current_album=$(ffprobe -v quiet -print_format json -show_format "$full_path" | grep -oP '"album"\s*:\s*"\K[^"]+')
+        local current_track=$(ffprobe -v quiet -print_format json -show_format "$full_path" | grep -oP '"track"\s*:\s*"\K[^"]+')
 
         local metadata_args=()
-        if [ -z "$current_title" ]; then
-            metadata_args+=(-metadata "title=$episode_title")
-            echo "Setting title to: $episode_title"
-        else
-            echo "Title already exists: $current_title"
-        fi
+        if [ "$meta_autofill" = true ]; then
+            if [ -z "$current_title" ]; then
+                metadata_args+=(-metadata "title=$episode_title")
+                echo "Setting title to: $episode_title"
+            else
+                echo "Title already exists: $current_title"
+            fi
 
-        if [ -z "$current_album" ]; then
-            metadata_args+=(-metadata "album=$album_name")
-            echo "Setting album to: $album_name"
-        else
-            echo "Album already exists: $current_album"
+            if [ -z "$current_album" ]; then
+                metadata_args+=(-metadata "album=$album_name")
+                echo "Setting album to: $album_name"
+            else
+                echo "Album already exists: $current_album"
+            fi
         fi
         
         if [ "$meta_number" = true ] && [ -z "$current_track" ]; then
@@ -320,6 +323,8 @@ autofill_metadata() {
         fi
     elif [ "$meta_autofill" = true ] && [ "$ffmpeg_installed" = false ]; then
         echo "Warning: ffmpeg is not installed. Metadata autofill is not available."
+    elif [ "$meta_number" = true ] && [ "$ffmpeg_installed" = false ]; then
+        echo "Warning: ffmpeg is not installed. Setting track number is not available."
     fi
 }
 
