@@ -342,7 +342,7 @@ download_episode() {
     fi
 
     # Extract the episode title
-    episode_title=$(grep -o '<h1[^>]*>[^<]*</h1>' <<< "$webpage_content" | sed 's/<[^>]*>//g')
+    episode_title=$(grep -o '<h1[^>]*>[^<]*</h1>' <<< "$webpage_content" | sed 's/<[^>]*>//g' | sed 's/&quot;/"/g')
 
     if [ -z "$episode_title" ]; then
         echo "Error: Could not find episode title in the webpage."
